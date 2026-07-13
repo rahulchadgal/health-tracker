@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Madhavi Health">
+<title>Madhavi Health Tracker</title>
+<style>
+  :root {
+    --teal: #0F6E56; --teal-light: #E1F5EE; --teal-mid: #1D9E75;
+    --purple: #3C3489; --purple-light: #EEEDFE; --purple-mid: #7F77DD;
+    --coral: #993C1D; --coral-light: #FAECE7;
+    --amber: #854F0B; --amber-light: #FAEEDA;
+    --gray: #444441; --gray-light: #F1EFE8; --border: #D3D1C7;
+    --white: #ffffff; --text: #2C2C2A; --muted: #888780;
+    --bg: #F8F7F4;
+    --nav-h: 64px; --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overscroll-behavior: none; }
+  
+  /* NAV */
+  .nav { position: sticky; top: 0; z-index: 100; background: var(--white); border-bottom: 0.5px solid var(--border); padding: 14px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-title { font-size: 18px; font-weight: 600; color: var(--teal); }
+  .nav-date { font-size: 12px; color: var(--muted); }
+  
+  /* BOTTOM TAB BAR */
+  .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; background: var(--white); border-top: 0.5px solid var(--border); display: flex; padding-bottom: var(--safe-bottom); }
+  .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 4px; gap: 3px; border: none; background: none; cursor: pointer; }
+  .tab-item span { font-size: 10px; color: var(--muted); font-weight: 500; }
+  .tab-item i { font-size: 22px; color: var(--muted); }
+  .tab-item.active i, .tab-item.active span { color: var(--teal); }
+  
+  /* SCREENS */
+  .screen { display: none; padding: 16px 16px calc(var(--nav-h) + var(--safe-bottom) + 16px); min-height: 100vh; }
+  .screen.active { display: block; }
+  
+  /* CARDS */
+  .card { background: var(--white); border-radius: 16px; border: 0.5px solid var(--border); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  
+  /* HERO CARD */
+  .hero { background: var(--teal); border-radius: 20px; padding: 20px; margin-bottom: 16px; color: white; }
+  .hero-greeting { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+  .hero-name { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
+  .hero-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .hero-stat { background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .hero-stat-val { font-size: 20px; font-weight: 700; }
+  .hero-stat-lbl { font-size: 10px; opacity: 0.8; margin-top: 2px; }
+  
+  /* MEAL CHECKLIST */
+  .meal-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 0.5px solid var(--gray-light); cursor: pointer; }
+  .meal-row:last-child { border-bottom: none; }
+  .meal-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .meal-check.done { background: var(--teal); border-color: var(--teal); }
+  .meal-check i { font-size: 14px; color: white; }
+  .meal-info { flex: 1; }
+  .meal-name { font-size: 14px; font-weight: 500; }
+  .meal-time { font-size: 12px; color: var(--muted); }
+  .meal-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: var(--teal-light); color: var(--teal); font-weight: 600; }
+  
+  /* SLIDERS */
+  .slider-row { margin-bottom: 16px; }
+  .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .slider-label { font-size: 14px; font-weight: 500; }
+  .slider-val { font-size: 16px; font-weight: 700; color: var(--teal); min-width: 28px; text-align: right; }
+  input[type=range] { width: 100%; height: 4px; border-radius: 2px; background: var(--gray-light); outline: none; -webkit-appearance: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--teal); }
+  
+  /* SYMPTOM PILLS */
+  .pill-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .pill { padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 13px; cursor: pointer; background: var(--white); color: var(--text); transition: all 0.15s; }
+  .pill.selected { background: var(--teal); border-color: var(--teal); color: white; }
+  .pill.selected-coral { background: var(--coral-light); border-color: var(--coral); color: var(--coral); }
+  
+  /* PERIOD TRACKER */
+  .period-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 12px 0; }
+  .pday { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--muted); }
+  .pday.period { background: var(--coral-light); border-color: var(--coral); color: var(--coral); font-weight: 700; }
+  .pday.today { border: 2px solid var(--teal); color: var(--teal); font-weight: 700; }
+  .pday.spotting { background: #FFF0EC; border-color: #F0997B; color: #D85A30; }
+  
+  /* PROGRESS CHART */
+  .chart-wrap { position: relative; height: 120px; margin: 8px 0; }
+  canvas { width: 100% !important; }
+  
+  /* WATER TRACKER */
+  .water-glasses { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .glass { width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--white); transition: all 0.15s; }
+  .glass.filled { background: #E6F1FB; border-color: #185FA5; }
+  .glass i { font-size: 18px; color: var(--border); }
+  .glass.filled i { color: #185FA5; }
+  
+  /* NOTES */
+  textarea { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 12px; font-size: 14px; font-family: inherit; resize: none; background: var(--bg); color: var(--text); outline: none; line-height: 1.5; }
+  textarea:focus { border-color: var(--teal); }
+  
+  /* SAVE BTN */
+  .save-btn { width: 100%; background: var(--teal); color: white; border: none; border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+  .save-btn:active { opacity: 0.85; transform: scale(0.98); }
+  
+  /* HISTORY */
+  .history-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 0.5px solid var(--gray-light); }
+  .history-row:last-child { border-bottom: none; }
+  .hist-date { font-size: 13px; font-weight: 600; color: var(--teal); min-width: 60px; }
+  .hist-dots { display: flex; gap: 4px; flex: 1; }
+  .hdot { width: 10px; height: 10px; border-radius: 50%; }
+  .hist-energy { font-size: 13px; font-weight: 600; color: var(--text); }
+  
+  /* INSIGHTS */
+  .insight-card { border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .insight-card.teal { background: var(--teal-light); border: 0.5px solid #9FE1CB; }
+  .insight-card.amber { background: var(--amber-light); border: 0.5px solid #FAC775; }
+  .insight-card.coral { background: var(--coral-light); border: 0.5px solid #F5C4B3; }
+  .insight-card.purple { background: var(--purple-light); border: 0.5px solid #CECBF6; }
+  .insight-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .insight-card.teal .insight-title { color: var(--teal); }
+  .insight-card.amber .insight-title { color: var(--amber); }
+  .insight-card.coral .insight-title { color: var(--coral); }
+  .insight-card.purple .insight-title { color: var(--purple); }
+  .insight-body { font-size: 13px; color: var(--gray); line-height: 1.5; }
+  
+  /* TOAST */
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--teal); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 500; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+  
+  /* SECTION HEAD */
+  .sec-head { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .sec-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  
+  /* STREAK */
+  .streak-row { display: flex; gap: 5px; margin-top: 10px; }
+  .streak-dot { width: 32px; height: 8px; border-radius: 4px; background: var(--gray-light); }
+  .streak-dot.done { background: var(--teal); }
+  
+  /* QUICK LOG SECTION */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .mini-card { background: var(--white); border-radius: 14px; border: 0.5px solid var(--border); padding: 14px 12px; }
+  .mini-card-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .mini-card-val { font-size: 26px; font-weight: 700; color: var(--teal); }
+  .mini-card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<div class="toast" id="toast">Saved!</div>
+
+<!-- ══ SCREEN: TODAY ══ -->
+<div class="screen active" id="screen-today">
+  <nav class="nav">
+    <div>
+      <div class="nav-title">Madhavi Health</div>
+      <div class="nav-date" id="today-date"></div>
+    </div>
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--teal);">M</div>
+  </nav>
+  
+  <div class="hero">
+    <div class="hero-greeting">Good morning,</div>
+    <div class="hero-name">Madhavi 🌿</div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-val" id="hero-energy">—</div>
+        <div class="hero-stat-lbl">Energy</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val" id="hero-water">—</div>
+        <div class="hero-stat-lbl">Glasses</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val" id="hero-meals">0/7</div>
+        <div class="hero-stat-lbl">Meals</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="two-col">
+    <div class="mini-card">
+      <div class="mini-card-label">Day streak</div>
+      <div class="mini-card-val" id="streak-count">0</div>
+      <div class="mini-card-sub">days logged</div>
+    </div>
+    <div class="mini-card">
+      <div class="mini-card-label">Last period</div>
+      <div class="mini-card-val" id="last-period-days" style="font-size:18px;">—</div>
+      <div class="mini-card-sub">days ago</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Today's meals</div>
+    <div id="meal-list"></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Water intake</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Tap each glass to track — aim for 10+ glasses</div>
+    <div class="water-glasses" id="water-glasses"></div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: LOG ══ -->
+<div class="screen" id="screen-log">
+  <nav class="nav">
+    <div class="nav-title">Daily log</div>
+    <div class="nav-date" id="log-date"></div>
+  </nav>
+  
+  <div class="card">
+    <div class="card-title">Energy and wellbeing</div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">Energy level</span><span class="slider-val" id="energy-val">3</span></div>
+      <input type="range" min="1" max="5" step="1" value="3" id="energy-slider">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px;"><span>Very low</span><span>Excellent</span></div>
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">Sleep (hours)</span><span class="slider-val" id="sleep-val">7</span></div>
+      <input type="range" min="3" max="10" step="1" value="7" id="sleep-slider">
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">Sciatic pain</span><span class="slider-val" id="pain-val">0</span></div>
+      <input type="range" min="0" max="5" step="1" value="0" id="pain-slider">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px;"><span>No pain</span><span>Severe</span></div>
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">Stress / overthinking</span><span class="slider-val" id="stress-val">2</span></div>
+      <input type="range" min="1" max="5" step="1" value="2" id="stress-slider">
+    </div>
+    <div class="slider-row" style="margin-bottom:0;">
+      <div class="slider-header"><span class="slider-label">Body strength feeling</span><span class="slider-val" id="strength-val">3</span></div>
+      <input type="range" min="1" max="5" step="1" value="3" id="strength-slider">
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Yoga / exercise</div>
+    <div style="display:flex;gap:8px;">
+      <div class="pill" id="yoga-n" onclick="toggleYoga('N')">No yoga today</div>
+      <div class="pill" id="yoga-y" onclick="toggleYoga('Y')">Done yoga</div>
+    </div>
+    <div id="yoga-detail" style="display:none;margin-top:12px;">
+      <div class="slider-header"><span class="slider-label">Duration (min)</span><span class="slider-val" id="yoga-dur-val">20</span></div>
+      <input type="range" min="5" max="60" step="5" value="20" id="yoga-dur">
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Symptoms today</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Select all that apply</div>
+    <div class="pill-group" id="symptom-pills"></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Mood</div>
+    <div class="pill-group" id="mood-pills"></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Notes / reflection</div>
+    <textarea id="notes-input" rows="3" placeholder="How did today feel? Any wins or challenges..."></textarea>
+  </div>
+  
+  <button class="save-btn" onclick="saveLog()">Save today's log</button>
+  <div style="height:8px;"></div>
+</div>
+
+<!-- ══ SCREEN: PERIOD ══ -->
+<div class="screen" id="screen-period">
+  <nav class="nav">
+    <div class="nav-title">Period tracker</div>
+    <div class="nav-date">Track your cycle</div>
+  </nav>
+  
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <button onclick="changeMonth(-1)" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--teal);"><i class="ti ti-chevron-left"></i></button>
+      <div style="font-size:16px;font-weight:600;" id="period-month-label"></div>
+      <button onclick="changeMonth(1)" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--teal);"><i class="ti ti-chevron-right"></i></button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;">
+      <div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);" *>Su</div>
+      <div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);">Mo</div>
+      <div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);">Tu</div>
+      <div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);">We</div>
+      <div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);">Th</div>
+      <div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);">Fr</div>
+      <div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);">Sa</div>
+    </div>
+    <div class="period-grid" id="period-grid"></div>
+    <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><div style="width:12px;height:12px;border-radius:4px;background:var(--coral-light);border:1px solid var(--coral);"></div> Period</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><div style="width:12px;height:12px;border-radius:4px;background:#FFF0EC;border:1px solid #F0997B;"></div> Spotting</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><div style="width:12px;height:12px;border-radius:4px;border:2px solid var(--teal);"></div> Today</div>
+    </div>
+  </div>
+  
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <div class="pill" id="mark-period" onclick="setMarkMode('period')" style="flex:1;text-align:center;">Mark period</div>
+    <div class="pill" id="mark-spotting" onclick="setMarkMode('spotting')" style="flex:1;text-align:center;">Mark spotting</div>
+    <div class="pill" id="mark-clear" onclick="setMarkMode('clear')" style="flex:1;text-align:center;">Clear</div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Cycle summary</div>
+    <div id="cycle-summary" style="font-size:14px;line-height:1.8;color:var(--text);"></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Symptoms during cycle</div>
+    <div class="pill-group" id="cycle-symptoms"></div>
+    <textarea style="margin-top:12px;" id="cycle-notes" rows="2" placeholder="Cramps, mood, flow details..."></textarea>
+    <button class="save-btn" onclick="saveCycle()" style="margin-top:10px;">Save cycle notes</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN: PROGRESS ══ -->
+<div class="screen" id="screen-progress">
+  <nav class="nav">
+    <div class="nav-title">Progress</div>
+    <div class="nav-date">Last 30 days</div>
+  </nav>
+  
+  <div class="card">
+    <div class="card-title">Weekly averages</div>
+    <div class="two-col" style="margin-bottom:0;">
+      <div>
+        <div style="font-size:12px;color:var(--muted);">Avg energy</div>
+        <div style="font-size:24px;font-weight:700;color:var(--teal);" id="avg-energy">—</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);">Avg pain</div>
+        <div style="font-size:24px;font-weight:700;color:var(--coral);" id="avg-pain">—</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div style="font-size:12px;color:var(--muted);">Avg sleep</div>
+        <div style="font-size:24px;font-weight:700;color:var(--purple);" id="avg-sleep">—</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div style="font-size:12px;color:var(--muted);">Yoga days</div>
+        <div style="font-size:24px;font-weight:700;color:var(--amber);" id="yoga-days">—</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Energy trend (last 14 days)</div>
+    <div class="chart-wrap"><canvas id="energy-chart"></canvas></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Pain trend (last 14 days)</div>
+    <div class="chart-wrap"><canvas id="pain-chart"></canvas></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Insights</div>
+    <div id="insights-container"></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Log history</div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: PLAN ══ -->
+<div class="screen" id="screen-plan">
+  <nav class="nav">
+    <div class="nav-title">Your plan</div>
+    <div class="nav-date">Diet and wellness guide</div>
+  </nav>
+  
+  <div class="card">
+    <div class="card-title">Daily meal schedule</div>
+    <div id="plan-meals"></div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Key foods — include daily</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Flaxseed 1 tbsp</span>
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">2 walnuts</span>
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Turmeric in cooking</span>
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">5–7 soaked almonds</span>
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Leafy greens</span>
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Curd/buttermilk</span>
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Seasonal fruit</span>
+      <span style="background:var(--teal-light);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Methi/jeera water</span>
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Avoid / reduce</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Maida (refined flour)</span>
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Refined sugar</span>
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Cold drinks</span>
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Excess tea/coffee</span>
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Skipping meals</span>
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Late-night eating</span>
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Fried food daily</span>
+      <span style="background:var(--coral-light);color:var(--coral);padding:5px 11px;border-radius:20px;font-size:13px;font-weight:500;">Ice-cold water</span>
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Yoga poses for you</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--gray);">
+      <strong style="color:var(--teal);">For sciatic pain:</strong><br>
+      Supta Baddha Konasana • Setu Bandhasana • Pawanmuktasana (gentle)<br><br>
+      <strong style="color:var(--purple);">For hormones + periods:</strong><br>
+      Baddha Konasana • Viparita Karani (legs-up-the-wall) • Balasana<br><br>
+      <strong style="color:var(--amber);">For stress + overthinking:</strong><br>
+      Anulom Vilom (10 min daily) • Shavasana • Bhramari pranayama
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">Lab tests to get done</div>
+    <div style="font-size:13px;line-height:2;color:var(--gray);">
+      <i class="ti ti-circle-check" style="color:var(--teal);margin-right:6px;"></i>Haemoglobin (for weakness and fatigue)<br>
+      <i class="ti ti-circle-check" style="color:var(--teal);margin-right:6px;"></i>Vitamin D3<br>
+      <i class="ti ti-circle-check" style="color:var(--teal);margin-right:6px;"></i>Vitamin B12<br>
+      <i class="ti ti-circle-check" style="color:var(--teal);margin-right:6px;"></i>TSH — thyroid function<br>
+      <i class="ti ti-circle-check" style="color:var(--teal);margin-right:6px;"></i>FSH, LH, AMH — hormonal panel
+    </div>
+  </div>
+</div>
+
+<!-- ══ BOTTOM TAB BAR ══ -->
+<div class="tab-bar">
+  <button class="tab-item active" onclick="showScreen('today',this)">
+    <i class="ti ti-home"></i><span>Today</span>
+  </button>
+  <button class="tab-item" onclick="showScreen('log',this)">
+    <i class="ti ti-edit"></i><span>Log</span>
+  </button>
+  <button class="tab-item" onclick="showScreen('period',this)">
+    <i class="ti ti-calendar-heart"></i><span>Cycle</span>
+  </button>
+  <button class="tab-item" onclick="showScreen('progress',this)">
+    <i class="ti ti-chart-line"></i><span>Progress</span>
+  </button>
+  <button class="tab-item" onclick="showScreen('plan',this)">
+    <i class="ti ti-leaf"></i><span>My Plan</span>
+  </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const MEALS = [
+  {id:'m1', name:'Wake-up drink', time:'6:00 AM', desc:'Warm jeera / methi water', badge:'Hormone'},
+  {id:'m2', name:'Breakfast', time:'7:00 AM', desc:'Idli/poha/cheela + tulsi tea', badge:'Energy'},
+  {id:'m3', name:'Mid-morning snack', time:'10:00 AM', desc:'Nuts + fruit or buttermilk', badge:'Anti-inflam'},
+  {id:'m4', name:'Lunch', time:'12:30 PM', desc:'Dal + roti/rice + sabzi + curd', badge:'Main meal'},
+  {id:'m5', name:'Evening snack', time:'4:00 PM', desc:'Golden milk / chana / dates', badge:'Strength'},
+  {id:'m6', name:'Dinner', time:'7:00 PM', desc:'Khichdi or light roti + dal', badge:'Digest'},
+  {id:'m7', name:'Bedtime', time:'9:30 PM', desc:'Warm milk + nutmeg (optional)', badge:'Sleep'},
+];
+const SYMPTOMS = ['Fatigue','Weakness','Headache','Bloating','Back pain','Sciatic pain','Mood swings','Nausea','Acne','Cramps'];
+const MOODS = ['Calm','Happy','Anxious','Overthinking','Irritable','Sad','Energetic','Tired'];
+const CYCLE_SYMPTOMS = ['Cramps','Heavy flow','Light flow','Spotting','Mood swings','Bloating','Breast tenderness','Back pain'];
+
+let state = {
+  meals: {},
+  water: 0,
+  markMode: 'period',
+  calMonth: new Date().getMonth(),
+  calYear: new Date().getFullYear(),
+};
+
+function todayKey() {
+  const d = new Date();
+  return `log_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
+}
+
+function getLogs() {
+  try { return JSON.parse(localStorage.getItem('mhLogs') || '{}'); } catch { return {}; }
+}
+function getPeriodData() {
+  try { return JSON.parse(localStorage.getItem('mhPeriod') || '{}'); } catch { return {}; }
+}
+function savePeriodData(d) { localStorage.setItem('mhPeriod', JSON.stringify(d)); }
+
+function showScreen(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'period') renderCalendar();
+  if (id === 'progress') renderProgress();
+  window.scrollTo(0,0);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── TODAY ──
+function initToday() {
+  const d = new Date();
+  const opts = {weekday:'long', month:'long', day:'numeric'};
+  document.getElementById('today-date').textContent = d.toLocaleDateString('en-IN', opts);
+  document.getElementById('log-date').textContent = d.toLocaleDateString('en-IN', opts);
+
+  const mealList = document.getElementById('meal-list');
+  mealList.innerHTML = '';
+  const saved = getLogs()[todayKey()] || {};
+  state.meals = saved.meals || {};
+
+  MEALS.forEach(m => {
+    const done = !!state.meals[m.id];
+    const row = document.createElement('div');
+    row.className = 'meal-row';
+    row.innerHTML = `
+      <div class="meal-check ${done?'done':''}" id="chk-${m.id}">
+        ${done?'<i class="ti ti-check"></i>':''}
+      </div>
+      <div class="meal-info">
+        <div class="meal-name">${m.name}</div>
+        <div class="meal-time">${m.time} · ${m.desc}</div>
+      </div>
+      <span class="meal-badge">${m.badge}</span>
+    `;
+    row.onclick = () => toggleMeal(m.id);
+    mealList.appendChild(row);
+  });
+  
+  updateHeroMeals();
+  initWater();
+  updateStreak();
+  updateLastPeriod();
+}
+
+function toggleMeal(id) {
+  state.meals[id] = !state.meals[id];
+  const chk = document.getElementById('chk-'+id);
+  if (state.meals[id]) {
+    chk.classList.add('done');
+    chk.innerHTML = '<i class="ti ti-check"></i>';
+  } else {
+    chk.classList.remove('done');
+    chk.innerHTML = '';
+  }
+  updateHeroMeals();
+  autoSaveMeals();
+}
+
+function updateHeroMeals() {
+  const done = Object.values(state.meals).filter(Boolean).length;
+  document.getElementById('hero-meals').textContent = done+'/7';
+}
+
+function autoSaveMeals() {
+  const logs = getLogs();
+  const key = todayKey();
+  logs[key] = Object.assign({}, logs[key] || {}, {meals: state.meals, date: new Date().toISOString()});
+  localStorage.setItem('mhLogs', JSON.stringify(logs));
+}
+
+function initWater() {
+  const saved = getLogs()[todayKey()] || {};
+  state.water = saved.water || 0;
+  renderWater();
+}
+
+function renderWater() {
+  const cont = document.getElementById('water-glasses');
+  cont.innerHTML = '';
+  document.getElementById('hero-water').textContent = state.water;
+  for (let i=1;i<=12;i++) {
+    const g = document.createElement('div');
+    g.className = 'glass' + (i<=state.water?' filled':'');
+    g.innerHTML = '<i class="ti ti-glass"></i>';
+    g.onclick = () => { state.water = (state.water === i) ? i-1 : i; renderWater(); autoSaveWater(); };
+    cont.appendChild(g);
+  }
+}
+
+function autoSaveWater() {
+  const logs = getLogs();
+  const key = todayKey();
+  logs[key] = Object.assign({}, logs[key] || {}, {water: state.water});
+  localStorage.setItem('mhLogs', JSON.stringify(logs));
+}
+
+function updateStreak() {
+  const logs = getLogs();
+  let streak = 0;
+  const d = new Date();
+  for (let i=0;i<30;i++) {
+    const k = `log_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
+    if (logs[k] && logs[k].energy) streak++;
+    else if (i>0) break;
+    d.setDate(d.getDate()-1);
+  }
+  document.getElementById('streak-count').textContent = streak;
+}
+
+function updateLastPeriod() {
+  const pd = getPeriodData();
+  const periodDays = Object.entries(pd).filter(([k,v]) => v==='period').map(([k])=>k).sort().reverse();
+  if (periodDays.length) {
+    const parts = periodDays[0].split('-');
+    const last = new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    const diff = Math.floor((new Date()-last)/(1000*60*60*24));
+    document.getElementById('last-period-days').textContent = diff;
+  }
+}
+
+// ── LOG ──
+function initSlider(id, outId) {
+  const el = document.getElementById(id);
+  const out = document.getElementById(outId);
+  out.textContent = el.value;
+  el.oninput = () => { out.textContent = el.value; };
+}
+
+function initLog() {
+  initSlider('energy-slider','energy-val');
+  initSlider('sleep-slider','sleep-val');
+  initSlider('pain-slider','pain-val');
+  initSlider('stress-slider','stress-val');
+  initSlider('strength-slider','strength-val');
+  initSlider('yoga-dur','yoga-dur-val');
+  
+  const saved = getLogs()[todayKey()] || {};
+  if (saved.energy) document.getElementById('energy-slider').value = saved.energy;
+  if (saved.sleep) document.getElementById('sleep-slider').value = saved.sleep;
+  if (saved.pain) document.getElementById('pain-slider').value = saved.pain;
+  if (saved.stress) document.getElementById('stress-slider').value = saved.stress;
+  if (saved.strength) document.getElementById('strength-slider').value = saved.strength;
+  ['energy-val','sleep-val','pain-val','stress-val','strength-val'].forEach((id,i) => {
+    const sliders = ['energy-slider','sleep-slider','pain-slider','stress-slider','strength-slider'];
+    document.getElementById(id).textContent = document.getElementById(sliders[i]).value;
+  });
+
+  renderSymptomPills(saved.symptoms || []);
+  renderMoodPills(saved.mood || []);
+  if (saved.notes) document.getElementById('notes-input').value = saved.notes;
+  
+  const energy = document.getElementById('energy-slider');
+  document.getElementById('hero-energy').textContent = energy.value+'/5';
+  energy.addEventListener('input', () => document.getElementById('hero-energy').textContent = energy.value+'/5');
+}
+
+let selectedSymptoms = [];
+let selectedMoods = [];
+
+function renderSymptomPills(sel) {
+  selectedSymptoms = sel;
+  const cont = document.getElementById('symptom-pills');
+  cont.innerHTML = '';
+  SYMPTOMS.forEach(s => {
+    const p = document.createElement('div');
+    p.className = 'pill' + (sel.includes(s)?' selected':'');
+    p.textContent = s;
+    p.onclick = () => {
+      if (selectedSymptoms.includes(s)) selectedSymptoms = selectedSymptoms.filter(x=>x!==s);
+      else selectedSymptoms.push(s);
+      renderSymptomPills(selectedSymptoms);
+    };
+    cont.appendChild(p);
+  });
+}
+
+function renderMoodPills(sel) {
+  selectedMoods = sel;
+  const cont = document.getElementById('mood-pills');
+  cont.innerHTML = '';
+  MOODS.forEach(m => {
+    const p = document.createElement('div');
+    p.className = 'pill' + (sel.includes(m)?' selected':'');
+    p.textContent = m;
+    p.onclick = () => {
+      if (selectedMoods.includes(m)) selectedMoods = selectedMoods.filter(x=>x!==m);
+      else selectedMoods.push(m);
+      renderMoodPills(selectedMoods);
+    };
+    cont.appendChild(p);
+  });
+}
+
+let yogaDone = null;
+function toggleYoga(val) {
+  yogaDone = (yogaDone === val) ? null : val;
+  document.getElementById('yoga-y').className = 'pill'+(yogaDone==='Y'?' selected':'');
+  document.getElementById('yoga-n').className = 'pill'+(yogaDone==='N'?' selected':'');
+  document.getElementById('yoga-detail').style.display = (yogaDone==='Y') ? 'block' : 'none';
+}
+
+function saveLog() {
+  const logs = getLogs();
+  const key = todayKey();
+  const entry = {
+    date: new Date().toISOString(),
+    energy: parseInt(document.getElementById('energy-slider').value),
+    sleep: parseInt(document.getElementById('sleep-slider').value),
+    pain: parseInt(document.getElementById('pain-slider').value),
+    stress: parseInt(document.getElementById('stress-slider').value),
+    strength: parseInt(document.getElementById('strength-slider').value),
+    yoga: yogaDone,
+    yogaDur: yogaDone==='Y' ? parseInt(document.getElementById('yoga-dur').value) : 0,
+    symptoms: selectedSymptoms,
+    mood: selectedMoods,
+    notes: document.getElementById('notes-input').value,
+    meals: state.meals,
+    water: state.water,
+  };
+  logs[key] = entry;
+  localStorage.setItem('mhLogs', JSON.stringify(logs));
+  document.getElementById('hero-energy').textContent = entry.energy+'/5';
+  updateStreak();
+  showToast('Log saved!');
+}
+
+// ── PERIOD ──
+let selectedCycleSymptoms = [];
+function renderCycleSymptoms() {
+  const cont = document.getElementById('cycle-symptoms');
+  cont.innerHTML = '';
+  CYCLE_SYMPTOMS.forEach(s => {
+    const p = document.createElement('div');
+    p.className = 'pill'+(selectedCycleSymptoms.includes(s)?' selected-coral':'');
+    p.style.borderColor = selectedCycleSymptoms.includes(s) ? 'var(--coral)' : 'var(--border)';
+    p.textContent = s;
+    p.onclick = () => {
+      if (selectedCycleSymptoms.includes(s)) selectedCycleSymptoms = selectedCycleSymptoms.filter(x=>x!==s);
+      else selectedCycleSymptoms.push(s);
+      renderCycleSymptoms();
+    };
+    cont.appendChild(p);
+  });
+}
+
+function setMarkMode(m) {
+  state.markMode = m;
+  ['period','spotting','clear'].forEach(x => {
+    const el = document.getElementById('mark-'+x);
+    el.className = 'pill'+(m===x?' selected':'');
+  });
+}
+
+function renderCalendar() {
+  const pd = getPeriodData();
+  const grid = document.getElementById('period-grid');
+  grid.innerHTML = '';
+  const today = new Date();
+  const yr = state.calYear, mo = state.calMonth;
+  const label = new Date(yr, mo, 1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  document.getElementById('period-month-label').textContent = label;
+  
+  const firstDay = new Date(yr, mo, 1).getDay();
+  const daysInMonth = new Date(yr, mo+1, 0).getDate();
+  
+  for (let i=0;i<firstDay;i++) {
+    const blank = document.createElement('div');
+    blank.className = 'pday';
+    blank.style.visibility='hidden';
+    grid.appendChild(blank);
+  }
+  
+  for (let d=1;d<=daysInMonth;d++) {
+    const key = `${yr}-${mo+1}-${d}`;
+    const isToday = (yr===today.getFullYear() && mo===today.getMonth() && d===today.getDate());
+    const ptype = pd[key];
+    const el = document.createElement('div');
+    el.className = 'pday'+(ptype==='period'?' period':ptype==='spotting'?' spotting':'')+(isToday?' today':'');
+    el.textContent = d;
+    el.onclick = () => {
+      const pd2 = getPeriodData();
+      if (state.markMode==='clear') delete pd2[key];
+      else pd2[key] = state.markMode;
+      savePeriodData(pd2);
+      renderCalendar();
+      updateCycleSummary();
+      updateLastPeriod();
+    };
+    grid.appendChild(el);
+  }
+  updateCycleSummary();
+  renderCycleSymptoms();
+}
+
+function changeMonth(dir) {
+  state.calMonth += dir;
+  if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+  if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+  renderCalendar();
+}
+
+function updateCycleSummary() {
+  const pd = getPeriodData();
+  const periodDays = Object.entries(pd).filter(([k,v])=>v==='period').map(([k])=>k).sort();
+  const cont = document.getElementById('cycle-summary');
+  if (periodDays.length === 0) {
+    cont.textContent = 'No period days marked yet. Tap a date to mark your cycle.';
+    return;
+  }
+  const lastDate = new Date(periodDays[periodDays.length-1]);
+  const today = new Date();
+  const daysSince = Math.floor((today-lastDate)/(1000*60*60*24));
+  
+  let cycles = [];
+  let starts = [];
+  let prev = null;
+  for (let d of periodDays) {
+    if (!prev || (new Date(d)-new Date(prev))/(1000*60*60*24) > 2) starts.push(d);
+    prev = d;
+  }
+  for (let i=1;i<starts.length;i++) {
+    cycles.push(Math.floor((new Date(starts[i])-new Date(starts[i-1]))/(1000*60*60*24)));
+  }
+  const avgCycle = cycles.length ? Math.round(cycles.reduce((a,b)=>a+b,0)/cycles.length) : null;
+  
+  cont.innerHTML = `
+    Last period started: <strong>${periodDays[periodDays.length-1]}</strong><br>
+    Days since last period: <strong>${daysSince} days</strong><br>
+    ${avgCycle ? `Average cycle length: <strong>${avgCycle} days</strong><br>` : ''}
+    ${avgCycle ? `Next expected (approx): <strong>${new Date(new Date(starts[starts.length-1]).getTime()+avgCycle*24*60*60*1000).toLocaleDateString('en-IN')}</strong>` : ''}
+  `;
+}
+
+function saveCycle() {
+  const pd = getPeriodData();
+  pd['_notes_'+state.calYear+'_'+state.calMonth] = {symptoms: selectedCycleSymptoms, notes: document.getElementById('cycle-notes').value};
+  savePeriodData(pd);
+  showToast('Cycle notes saved!');
+}
+
+// ── PROGRESS ──
+let charts = {};
+function renderProgress() {
+  const logs = getLogs();
+  const keys = Object.keys(logs).sort().reverse().slice(0,30);
+  const recent = keys.map(k => logs[k]).filter(l => l.energy);
+  
+  if (recent.length === 0) {
+    document.getElementById('insights-container').innerHTML = '<div class="insight-card teal"><div class="insight-title">Start logging!</div><div class="insight-body">Log at least 3 days to see insights and trends here.</div></div>';
+    return;
+  }
+  
+  const avgE = (recent.reduce((a,l)=>a+(l.energy||0),0)/recent.length).toFixed(1);
+  const avgP = (recent.reduce((a,l)=>a+(l.pain||0),0)/recent.length).toFixed(1);
+  const avgS = (recent.reduce((a,l)=>a+(l.sleep||0),0)/recent.length).toFixed(1);
+  const yogaD = recent.filter(l=>l.yoga==='Y').length;
+  
+  document.getElementById('avg-energy').textContent = avgE;
+  document.getElementById('avg-pain').textContent = avgP;
+  document.getElementById('avg-sleep').textContent = avgS;
+  document.getElementById('yoga-days').textContent = yogaD;
+  
+  const last14 = keys.slice(0,14).reverse().map(k=>logs[k]).filter(l=>l.energy);
+  const labels = last14.map(l=>{const d=new Date(l.date);return `${d.getDate()}/${d.getMonth()+1}`;});
+  const energyData = last14.map(l=>l.energy||0);
+  const painData = last14.map(l=>l.pain||0);
+  
+  if (charts.energy) charts.energy.destroy();
+  if (charts.pain) charts.pain.destroy();
+  
+  const chartOpts = (color, label, data) => ({
+    type: 'line',
+    data: { labels, datasets: [{ label, data, borderColor: color, backgroundColor: color+'22', borderWidth: 2, pointRadius: 4, pointBackgroundColor: color, tension: 0.3, fill: true }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{y:{min:0,max:5,ticks:{stepSize:1,font:{size:10}}},x:{ticks:{font:{size:10}}}} }
+  });
+  
+  charts.energy = new Chart(document.getElementById('energy-chart'), chartOpts('#0F6E56','Energy',energyData));
+  charts.pain = new Chart(document.getElementById('pain-chart'), chartOpts('#993C1D','Pain',painData));
+  
+  // Insights
+  const insights = [];
+  if (parseFloat(avgE) >= 4) insights.push({type:'teal',title:'Great energy levels!',body:'Your average energy is '+avgE+'/5. Keep up the diet and routine!'});
+  else if (parseFloat(avgE) <= 2) insights.push({type:'amber',title:'Energy needs attention',body:'Average energy is '+avgE+'/5. Make sure you\'re not skipping meals and getting enough sleep.'});
+  if (parseFloat(avgP) >= 3) insights.push({type:'coral',title:'Sciatic pain is high',body:'Average pain '+avgP+'/5. Daily Supta Baddha Konasana and Setu Bandhasana may help. Avoid sitting long hours.'});
+  if (yogaD < 3) insights.push({type:'purple',title:'Increase yoga frequency',body:'You did yoga '+yogaD+' days this period. Try for at least 15 min daily — it will make a big difference for pain and hormones.'});
+  if (parseFloat(avgS) < 7) insights.push({type:'amber',title:'Sleep more',body:'Average sleep is '+avgS+' hrs. Hormonal repair happens during 10 PM–2 AM — try sleeping by 10:30 PM.'});
+  if (insights.length===0) insights.push({type:'teal',title:'You\'re doing well!',body:'Keep logging daily to get more personalized insights as your data builds up.'});
+  
+  document.getElementById('insights-container').innerHTML = insights.map(i=>`
+    <div class="insight-card ${i.type}">
+      <div class="insight-title">${i.title}</div>
+      <div class="insight-body">${i.body}</div>
+    </div>
+  `).join('');
+  
+  // History
+  const hist = document.getElementById('history-list');
+  hist.innerHTML = recent.slice(0,10).map(l=>{
+    const d = new Date(l.date);
+    const dateStr = `${d.getDate()}/${d.getMonth()+1}`;
+    const mealsD = l.meals ? Object.values(l.meals).filter(Boolean).length : 0;
+    const energyC = ['#D3D1C7','#F0997B','#EF9F27','#5DCAA5','#1D9E75','#0F6E56'][l.energy||0];
+    return `<div class="history-row">
+      <span class="hist-date">${dateStr}</span>
+      <div class="hist-dots">
+        ${Array.from({length:5},(_,i)=>`<div class="hdot" style="background:${i<(l.energy||0)?energyC:'#D3D1C7'}"></div>`).join('')}
+        <span style="font-size:11px;color:var(--muted);margin-left:4px;">energy</span>
+      </div>
+      <span style="font-size:12px;color:var(--muted);">${mealsD}/7 meals · ${l.water||0} glasses${l.yoga==='Y'?' · yoga':''}</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:14px;padding:12px 0;">No logs yet. Start logging from the Log tab.</div>';
+}
+
+// ── PLAN ──
+function initPlan() {
+  const planMeals = document.getElementById('plan-meals');
+  const mealDetails = [
+    {time:'6:00 AM',name:'Wake-up drink',detail:'Warm water + ½ tsp jeera powder + pinch of turmeric. OR soaked methi seeds in warm water. Wait 20–30 min before eating.'},
+    {time:'7:00–7:30 AM',name:'Breakfast',detail:'2 idli + sambar, OR poha with curry leaves + peanuts + banana, OR moong dal cheela + flaxseed chutney. + Tulsi/ginger tea.'},
+    {time:'10:00 AM',name:'Mid-morning snack',detail:'Walnuts + almonds + 1 fruit (guava/papaya/apple). OR buttermilk with curry leaves + cumin.'},
+    {time:'12:30–1:00 PM',name:'Lunch',detail:'1–2 roti (phulka) or brown rice + 1 cup dal + palak/methi sabzi + curd. Add ½ tsp ghee. Eat slowly, no phone.'},
+    {time:'4:00 PM',name:'Evening snack',detail:'Golden milk (warm milk + ashwagandha + turmeric). OR roasted chana. OR 2 dates + almonds.'},
+    {time:'7:00–7:30 PM',name:'Dinner',detail:'Khichdi + vegetable soup. OR 1 roti + dal + light sabzi. OR ragi/oats porridge. Eat 2 hrs before sleeping.'},
+    {time:'9:30 PM',name:'Bedtime (optional)',detail:'½ cup warm milk + pinch of nutmeg. Helps sleep and calms the mind.'},
+  ];
+  planMeals.innerHTML = mealDetails.map((m,i)=>`
+    <div style="display:flex;gap:10px;padding:10px 0;border-bottom:${i<6?'0.5px solid var(--gray-light)':'none'};">
+      <div style="min-width:70px;font-size:11px;color:var(--teal);font-weight:600;padding-top:2px;">${m.time}</div>
+      <div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:3px;">${m.name}</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5;">${m.detail}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── INIT ──
+setMarkMode('period');
+initToday();
+initLog();
+initPlan();
+
+document.querySelectorAll('.screen').forEach(s => {
+  s.addEventListener('scroll', () => {}, {passive:true});
+});
+</script>
+</body>
+</html>
